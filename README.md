@@ -2,10 +2,22 @@
 
 맥용 미니멀 코드 에디터. 실행/디버깅 없음 — 순수 타이핑 연습용.
 
-## 실행
+## 설치 (빌드된 앱)
+
+[Releases](https://github.com/easyDong19/scratchpad/releases)에서 최신 zip을 받아 압축 해제 후 `Scratchpad.app`을 `/Applications`로 이동.
+ad-hoc 서명이라 최초 실행이 차단되면:
 
 ```bash
-npm start
+xattr -dr com.apple.quarantine /Applications/Scratchpad.app
+```
+
+## 소스로 실행 / 빌드
+
+```bash
+npm install
+npm start            # 개발 실행
+npm run build        # dist/에 .app 패키징 (arm64)
+npm run install:app  # /Applications에 설치
 ```
 
 또는 Finder에서 `Scratchpad.command` 더블클릭.
