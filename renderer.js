@@ -9,6 +9,8 @@ const STORAGE_MEMO = 'scratchpad.memo';
 const STORAGE_MEMO_OPEN = 'scratchpad.memoOpen';
 const STORAGE_MEMO_WIDTH = 'scratchpad.memoWidth';
 const STORAGE_AC = 'scratchpad.autocomplete';
+const STORAGE_TERM_OPEN = 'scratchpad.termOpen';
+const STORAGE_TERM_HEIGHT = 'scratchpad.termHeight';
 const MEMO_MIN_WIDTH = 160;
 const EDITOR_MIN_WIDTH = 240;
 
@@ -171,16 +173,123 @@ require(['vs/editor/editor.main'], async function () {
   }
   setAutocomplete(acEnabled, true);
 
-  // Ctrl+X — 창 전체에서 먼저 가로챈다 (Monaco 키바인딩보다 우선)
+  // =========================================================
+  // 하단 터미널 — 컴파일+실행 (Ctrl+V 토글, Cmd+Enter 실행)
+  // =========================================================
+  const termPanel = document.getElementById('term-panel');
+  const hresizer = document.getElementById('hresizer');
+  const TERM_MIN_HEIGHT = 80;
+  const EDITOR_MIN_HEIGHT = 160;
+
+  const xterm = new window.Terminal({
+    fontSize: 13,
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    cursorBlink: true,
+    theme: { background: '#141414' },
+  });
+  const fitAddon = new window.FitAddon.FitAddon();
+  xterm.loadAddon(fitAddon);
+  xterm.open(document.getElementById('terminal'));
+
+  xterm.onData((d) => window.term.input(d));
+  xterm.onResize(({ cols, rows }) => window.term.resize({ cols, rows }));
+  window.term.onData((d) => xterm.write(d));
+  window.term.onExit((code) => {
+    xterm.write('\r\n\x1b[90m[프로세스 종료 · 코드 ' + code + '] Cmd+Enter로 다시 실행\x1b[0m\r\n');
+  });
+
+  const savedTermHeight = parseInt(localStorage.getItem(STORAGE_TERM_HEIGHT), 10);
+  if (savedTermHeight >= TERM_MIN_HEIGHT) termPanel.style.height = savedTermHeight + 'px';
+
+  let termOpen = false;
+  function setTermOpen(open, silent) {
+    termOpen = open;
+    document.body.classList.toggle('term-closed', !open);
+    localStorage.setItem(STORAGE_TERM_OPEN, open ? '1' : '0');
+    if (open) fitAddon.fit();
+    editor.layout();
+    if (!open) editor.focus();
+    if (!silent) showStatus(open ? '터미널 열림 · Ctrl+V로 닫기' : '터미널 닫힘 · Ctrl+V로 열기');
+  }
+  setTermOpen(localStorage.getItem(STORAGE_TERM_OPEN) === '1', true);
+
+  function runCode() {
+    if (!termOpen) setTermOpen(true, true);
+    xterm.reset();
+    fitAddon.fit();
+    xterm.write('\x1b[90m$ clang++ -std=c++20 scratch.cpp && ./scratch\x1b[0m\r\n');
+    window.term.start({ code: editor.getValue(), cols: xterm.cols, rows: xterm.rows });
+    xterm.focus(); // 실행 즉시 cin 입력 가능
+  }
+  editor.addCommand(K.CtrlCmd | C.Enter, runCode);
+
+  window.addEventListener('resize', () => { if (termOpen) fitAddon.fit(); });
+
+  // =========================================================
+  // 단축키 모음집 (Cmd+/ · 메뉴 > 도움말 · Esc로 닫기)
+  // =========================================================
+  const shortcutsOverlay = document.getElementById('shortcuts-overlay');
+  function setShortcutsOpen(open) {
+    shortcutsOverlay.classList.toggle('open', open);
+    if (!open) editor.focus();
+  }
+  window.ui.onShowShortcuts(() => setShortcutsOpen(!shortcutsOverlay.classList.contains('open')));
+  shortcutsOverlay.addEventListener('mousedown', (e) => {
+    if (e.target === shortcutsOverlay) setShortcutsOpen(false);
+  });
+
+  // ---- 전역 키 처리 — Monaco/xterm 키바인딩보다 우선 (capture) ----
   window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && shortcutsOverlay.classList.contains('open')) {
+      e.preventDefault();
+      setShortcutsOpen(false);
+      return;
+    }
+    // Cmd+Enter — 터미널에 포커스가 있어도 재실행
+    if (e.metaKey && !e.ctrlKey && !e.altKey && e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      runCode();
+      return;
+    }
     if (!e.ctrlKey || e.metaKey || e.altKey) return;
     const key = e.key.toLowerCase();
+    const inTerm = termPanel.contains(e.target);
+    if (key === 'v') {
+      e.preventDefault();
+      e.stopPropagation();
+      setTermOpen(!termOpen);
+      return;
+    }
     if (key !== 'x' && key !== 'c') return;
+    // 터미널 안의 Ctrl+C는 SIGINT (무한 루프 중단) — xterm이 처리하게 둔다
+    if (inTerm) return;
     e.preventDefault();
     e.stopPropagation();
     if (key === 'x') setMemoOpen(!memoOpen);
     else setAutocomplete(!acEnabled);
   }, true);
+
+  // ---- 터미널 높이 드래그 조절 ----
+  let hDragging = false;
+  hresizer.addEventListener('mousedown', (e) => {
+    hDragging = true;
+    hresizer.classList.add('dragging');
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!hDragging) return;
+    const max = Math.max(TERM_MIN_HEIGHT, window.innerHeight - EDITOR_MIN_HEIGHT);
+    const h = Math.min(max, Math.max(TERM_MIN_HEIGHT, window.innerHeight - e.clientY));
+    termPanel.style.height = h + 'px';
+    fitAddon.fit();
+  });
+  window.addEventListener('mouseup', () => {
+    if (!hDragging) return;
+    hDragging = false;
+    hresizer.classList.remove('dragging');
+    localStorage.setItem(STORAGE_TERM_HEIGHT, String(termPanel.clientHeight));
+  });
 
   // ---- 경계선 드래그로 폭 조절 ----
   let dragging = false;
@@ -467,7 +576,7 @@ require(['vs/editor/editor.main'], async function () {
       },
     });
     ready = true;
-    showStatus('clangd 연결됨 · Ctrl+X: 메모 · Ctrl+C: 자동완성 · Ctrl+Z: 숨기기');
+    showStatus('clangd 연결됨 · Cmd+Enter: 실행 · Ctrl+V: 터미널 · Cmd+/: 단축키');
   } else {
     showStatus('clangd 초기화 실패 — 자동완성 비활성', true);
   }

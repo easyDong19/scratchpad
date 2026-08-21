@@ -1,10 +1,12 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, nativeImage } = require('electron');
+const { app, BrowserWindow, Menu, globalShortcut, ipcMain, nativeImage } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const pty = require('node-pty');
 
 let win = null;
 let clangd = null;
+let runPty = null;
 
 // 작업 파일은 앱 번들이 아니라 사용자 데이터 폴더에 둔다
 let WORK_DIR = null;
@@ -116,6 +118,81 @@ ipcMain.handle('lsp-info', () => ({
   fileUri: 'file://' + SCRATCH_FILE,
 }));
 
+// ---- 컴파일 + 실행 (하단 터미널, PTY라 cin 대화형 입력 가능) ----
+const CXX = '/usr/bin/clang++';
+
+// clangd와 동일한 libstdc++(Homebrew GCC) 헤더로 컴파일 — bits/stdc++.h 지원
+function gccPaths() {
+  const incRoot = '/opt/homebrew/opt/gcc/include/c++';
+  const libRoot = '/opt/homebrew/opt/gcc/lib/gcc';
+  try {
+    const ver = fs.readdirSync(incRoot).filter((v) => /^\d+/.test(v)).sort((a, b) => b - a)[0];
+    if (!ver) return null;
+    const inc = path.join(incRoot, ver);
+    const arch = fs.readdirSync(inc).find((d) => d.includes('apple-darwin'));
+    const dylib = path.join(libRoot, ver, 'libstdc++.dylib');
+    if (!arch || !fs.existsSync(dylib)) return null;
+    return { inc, arch: path.join(inc, arch), backward: path.join(inc, 'backward'), dylib };
+  } catch (_) {
+    return null;
+  }
+}
+
+function killRun() {
+  if (runPty) {
+    try { runPty.kill(); } catch (_) {}
+    runPty = null;
+  }
+}
+
+ipcMain.on('run-start', (_e, { code, cols, rows }) => {
+  killRun();
+  fs.writeFileSync(SCRATCH_FILE, code);
+
+  const send = (ch, ...args) => {
+    if (win && !win.isDestroyed()) win.webContents.send(ch, ...args);
+  };
+
+  const g = gccPaths();
+  if (!fs.existsSync(CXX)) {
+    send('term-data', '\x1b[31mclang++ 없음 — Xcode Command Line Tools 필요: xcode-select --install\x1b[0m\r\n');
+    send('term-exit', 1);
+    return;
+  }
+  if (!g) {
+    send('term-data', '\x1b[31mGCC libstdc++ 없음 — brew install gcc 필요 (bits/stdc++.h 헤더용)\x1b[0m\r\n');
+    send('term-exit', 1);
+    return;
+  }
+
+  const bin = path.join(WORK_DIR, 'scratch.bin');
+  const q = (s) => "'" + s.replace(/'/g, "'\\''") + "'";
+  const script =
+    `${q(CXX)} -std=c++20 -O2 -nostdinc++` +
+    ` -isystem${q(g.inc)} -isystem${q(g.arch)} -isystem${q(g.backward)}` +
+    ` ${q(SCRATCH_FILE)} -o ${q(bin)} -nostdlib++ ${q(g.dylib)}` +
+    ` && exec ${q(bin)}`;
+
+  runPty = pty.spawn('/bin/zsh', ['-c', script], {
+    name: 'xterm-256color',
+    cols: cols || 80,
+    rows: rows || 24,
+    cwd: WORK_DIR,
+    env: process.env,
+  });
+  const me = runPty;
+  me.onData((data) => { if (runPty === me) send('term-data', data); });
+  me.onExit(({ exitCode }) => {
+    if (runPty === me) { runPty = null; send('term-exit', exitCode); }
+  });
+});
+
+ipcMain.on('run-input', (_e, data) => { if (runPty) runPty.write(data); });
+ipcMain.on('run-resize', (_e, { cols, rows }) => {
+  if (runPty && cols > 0 && rows > 0) { try { runPty.resize(cols, rows); } catch (_) {} }
+});
+ipcMain.on('run-kill', () => killRun());
+
 app.whenReady().then(() => {
   WORK_DIR = app.getPath('userData');
   SCRATCH_FILE = path.join(WORK_DIR, 'scratch.cpp');
@@ -133,6 +210,22 @@ app.whenReady().then(() => {
     if (!img.isEmpty()) app.dock.setIcon(img);
   }
 
+  // 메뉴바: 기본 역할 + 단축키 모음집
+  const showShortcuts = () => {
+    if (win && !win.isDestroyed()) { win.show(); win.webContents.send('show-shortcuts'); }
+  };
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    { role: 'appMenu' },
+    { role: 'editMenu' },
+    { role: 'windowMenu' },
+    {
+      label: '도움말',
+      submenu: [
+        { label: '단축키 모음집', accelerator: 'CmdOrCtrl+/', click: showShortcuts },
+      ],
+    },
+  ]));
+
   createWindow();
   startClangd();
 
@@ -149,6 +242,7 @@ app.whenReady().then(() => {
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
   if (clangd) clangd.kill();
+  killRun();
 });
 
 app.on('window-all-closed', () => {

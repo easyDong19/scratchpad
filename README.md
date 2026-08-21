@@ -26,6 +26,9 @@ npm run install:app  # /Applications에 설치
 
 | 키 | 기능 |
 |---|---|
+| `Cmd + Enter` | **컴파일 + 실행** — clang++(C++20)로 빌드해 하단 터미널에서 실행. 실행 중 `cin` 입력 가능 |
+| `Ctrl + V` | **터미널** 열기/닫기 (터미널 안 `Ctrl+C`는 실행 중인 프로그램 중단) |
+| `Cmd + /` | **단축키 모음집** 열기/닫기 (메뉴 > 도움말에서도 열림) |
 | `Ctrl + Z` | **보스키** — 창 숨기기/보이기 (다른 앱을 쓰는 중에도 전역으로 동작) |
 | `Ctrl + X` | **메모 패널** 열기/닫기 (정답 코드를 옆에 띄워놓고 따라 치기용) |
 | `Ctrl + C` | **자동완성 켜기/끄기** — 코테 사이트(프로그래머스 등)엔 자동완성이 없으므로 실전 모드 연습용. 상태는 저장됨 |
@@ -45,11 +48,14 @@ npm run install:app  # /Applications에 설치
   - C++ 하이라이팅은 되지만 자동완성·진단은 왼쪽 편집기 전용 (메모는 순수 참고용)
   - 경계선 드래그로 폭 조절, 열림 여부·폭·내용 모두 저장돼 재실행 시 복원
   - Ctrl+X로 열어도 키보드 포커스는 왼쪽에 남아 타이핑이 끊기지 않음
+- **컴파일 + 실행 (Cmd+Enter)**: 하단 터미널(xterm.js + node-pty, 진짜 PTY)에서 clang++ `-std=c++20`으로 빌드·실행
+  - 대화형 `cin` 입력 지원 — 실행 중 터미널에 직접 타이핑
+  - 무한 루프는 터미널 안에서 `Ctrl+C`로 중단, 높이 드래그 조절·열림 상태 저장
 - 작성 내용은 자동 저장되어 재실행 시 복원됨
 
 ## Programmers 기준 설정
 
-- 언어 표준: **C++17** (`compile_flags.txt` `-std=c++17`) — Programmers C++ 환경(g++ / C++17)과 동일. C++20 전용 API(`ranges`, `format` 등)는 자동완성에 안 뜨고 진단에서 에러로 표시됨
+- 언어 표준: **C++20** (`compile_flags.txt` 및 실행 컴파일 모두 `-std=c++20`)
 - 표준 라이브러리: GCC libstdc++ (`bits/stdc++.h` 사용 가능, Programmers의 g++와 같은 라이브러리 계열)
 - 포맷(Cmd+S): `.clang-format` — 4칸 들여쓰기, 같은 줄 중괄호, 줄 길이 제한 없음 (Programmers 기본 `solution()` 템플릿 스타일)
 - 기본 템플릿: Programmers `int solution(vector<int> numbers)` 형식

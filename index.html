@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <title>Scratchpad</title>
+  <link rel="stylesheet" href="node_modules/@xterm/xterm/css/xterm.css" />
   <style>
     html, body {
       margin: 0;
@@ -11,10 +12,17 @@
       overflow: hidden;
       background: #1e1e1e;
     }
-    #workspace {
+    #root {
       display: flex;
+      flex-direction: column;
       width: 100%;
       height: 100vh;
+    }
+    #workspace {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      width: 100%;
     }
     #container {
       flex: 1;
@@ -40,7 +48,7 @@
       background: #1a1a1a;
       border-left: 1px solid #2b2b2b;
     }
-    #memo-head {
+    #memo-head, #term-head {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -50,7 +58,7 @@
       background: #232323;
       user-select: none;
     }
-    #memo-head .hint {
+    #memo-head .hint, #term-head .hint {
       color: #5a5a5a;
     }
     #memo-editor {
@@ -59,6 +67,34 @@
     }
     body.memo-closed #memo,
     body.memo-closed #resizer {
+      display: none;
+    }
+    /* 터미널 패널 (Ctrl+V 토글, Cmd+Enter 실행) */
+    #hresizer {
+      height: 4px;
+      cursor: row-resize;
+      background: #2b2b2b;
+      flex: 0 0 auto;
+    }
+    #hresizer:hover, #hresizer.dragging {
+      background: #4a7fb5;
+    }
+    #term-panel {
+      height: 220px;
+      min-height: 80px;
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      background: #141414;
+      border-top: 1px solid #2b2b2b;
+    }
+    #terminal {
+      flex: 1;
+      min-height: 0;
+      padding: 4px 6px 0 6px;
+    }
+    body.term-closed #term-panel,
+    body.term-closed #hresizer {
       display: none;
     }
     #statusbar {
@@ -71,18 +107,114 @@
       pointer-events: none;
       user-select: none;
     }
+    /* 단축키 모음집 (Cmd+/ 또는 메뉴 > 도움말) */
+    #shortcuts-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    #shortcuts-overlay.open {
+      display: flex;
+    }
+    #shortcuts-card {
+      background: #232323;
+      border: 1px solid #3a3a3a;
+      border-radius: 10px;
+      padding: 18px 24px 20px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+      color: #d4d4d4;
+      font: 13px -apple-system, sans-serif;
+    }
+    #shortcuts-card h2 {
+      margin: 0 0 4px;
+      font-size: 15px;
+      color: #eaeaea;
+    }
+    #shortcuts-card .sub {
+      margin: 0 0 14px;
+      color: #7a7a7a;
+      font-size: 11px;
+    }
+    #shortcuts-card table {
+      border-collapse: collapse;
+    }
+    #shortcuts-card td {
+      padding: 5px 0;
+      vertical-align: top;
+    }
+    #shortcuts-card td.k {
+      padding-right: 22px;
+      white-space: nowrap;
+    }
+    #shortcuts-card kbd {
+      display: inline-block;
+      background: #2e2e2e;
+      border: 1px solid #454545;
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      padding: 1px 7px;
+      font: 12px Menlo, monospace;
+      color: #e8e8e8;
+    }
+    #shortcuts-card tr.section td {
+      padding-top: 12px;
+      color: #4a7fb5;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+    }
   </style>
 </head>
-<body class="memo-closed">
-  <div id="workspace">
-    <div id="container"></div>
-    <div id="resizer"></div>
-    <aside id="memo">
-      <div id="memo-head"><span>메모 — 정답 보고 따라 치기</span><span class="hint">Ctrl+X</span></div>
-      <div id="memo-editor"></div>
-    </aside>
+<body class="memo-closed term-closed">
+  <div id="root">
+    <div id="workspace">
+      <div id="container"></div>
+      <div id="resizer"></div>
+      <aside id="memo">
+        <div id="memo-head"><span>메모 — 정답 보고 따라 치기</span><span class="hint">Ctrl+X</span></div>
+        <div id="memo-editor"></div>
+      </aside>
+    </div>
+    <div id="hresizer"></div>
+    <div id="term-panel">
+      <div id="term-head"><span>터미널 — clang++ · C++20</span><span class="hint">Cmd+Enter 실행 · Ctrl+V 닫기</span></div>
+      <div id="terminal"></div>
+    </div>
   </div>
   <div id="statusbar"></div>
+
+  <div id="shortcuts-overlay">
+    <div id="shortcuts-card">
+      <h2>단축키 모음집</h2>
+      <p class="sub">Cmd+/ 또는 메뉴 &gt; 도움말에서 언제든 열 수 있어요 · Esc로 닫기</p>
+      <table>
+        <tr class="section"><td colspan="2">실행</td></tr>
+        <tr><td class="k"><kbd>Cmd</kbd> <kbd>Enter</kbd></td><td>컴파일 + 실행 (터미널 자동 열림)</td></tr>
+        <tr><td class="k"><kbd>Ctrl</kbd> <kbd>V</kbd></td><td>터미널 열기/닫기</td></tr>
+        <tr><td class="k"><kbd>Ctrl</kbd> <kbd>C</kbd> <span style="color:#7a7a7a">(터미널 안)</span></td><td>실행 중인 프로그램 중단 (무한 루프 탈출)</td></tr>
+        <tr class="section"><td colspan="2">연습</td></tr>
+        <tr><td class="k"><kbd>Ctrl</kbd> <kbd>Z</kbd></td><td>보스키 — 창 숨기기/보이기 (전역)</td></tr>
+        <tr><td class="k"><kbd>Ctrl</kbd> <kbd>X</kbd></td><td>메모 패널 열기/닫기</td></tr>
+        <tr><td class="k"><kbd>Ctrl</kbd> <kbd>C</kbd> <span style="color:#7a7a7a">(편집기)</span></td><td>자동완성 켜기/끄기 (실전 모드)</td></tr>
+        <tr class="section"><td colspan="2">편집</td></tr>
+        <tr><td class="k"><kbd>Cmd</kbd> <kbd>S</kbd></td><td>코드 포매팅 (clang-format)</td></tr>
+        <tr><td class="k"><kbd>Cmd</kbd> <kbd>=</kbd> / <kbd>-</kbd></td><td>글자 크기 키우기 / 줄이기</td></tr>
+        <tr><td class="k"><kbd>Cmd</kbd> <kbd>0</kbd></td><td>글자 크기 초기화 (15px)</td></tr>
+        <tr class="section"><td colspan="2">기타</td></tr>
+        <tr><td class="k"><kbd>Cmd</kbd> <kbd>/</kbd></td><td>이 단축키 모음집 열기/닫기</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- xterm은 monaco AMD 로더보다 먼저 — 아니면 window.Terminal 대신 AMD 모듈로 등록됨 -->
+  <script src="node_modules/@xterm/xterm/lib/xterm.js"></script>
+  <script src="node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
   <script src="node_modules/monaco-editor/min/vs/loader.js"></script>
   <script src="renderer.js"></script>
 </body>
