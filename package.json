@@ -6,7 +6,9 @@
   "scripts": {
     "start": "electron .",
     "postinstall": "electron-rebuild -f -w node-pty",
-    "build": "electron-packager . Scratchpad --platform=darwin --arch=arm64 --out=dist --overwrite --icon=icon.icns --app-bundle-id=kr.easydong.scratchpad --app-category-type=public.app-category.developer-tools --asar.unpackDir=\"node_modules/node-pty\" --ignore=\"^/dist($|/)\" --ignore=\"^/\\\\.git($|/)\"",
+    "build": "electron-packager . Scratchpad --platform=darwin --arch=arm64 --out=dist --overwrite --icon=icon.icns --app-bundle-id=kr.easydong.scratchpad --app-category-type=public.app-category.developer-tools --asar.unpackDir=\"node_modules/node-pty\" --ignore=\"^/dist($|/)\" --ignore=\"^/\\\\.git($|/)\" && npm run sign",
+    "sign": "codesign --force --deep --sign - dist/Scratchpad-darwin-arm64/Scratchpad.app && codesign --verify --deep --strict dist/Scratchpad-darwin-arm64/Scratchpad.app",
+    "dmg": "rm -rf dist/dmg-stage dist/Scratchpad-$npm_package_version-arm64.dmg && mkdir -p dist/dmg-stage && cp -R dist/Scratchpad-darwin-arm64/Scratchpad.app dist/dmg-stage/ && ln -s /Applications dist/dmg-stage/Applications && hdiutil create -volname \"Scratchpad $npm_package_version\" -srcfolder dist/dmg-stage -ov -format UDZO dist/Scratchpad-$npm_package_version-arm64.dmg && rm -rf dist/dmg-stage",
     "install:app": "rm -rf /Applications/Scratchpad.app && cp -R dist/Scratchpad-darwin-arm64/Scratchpad.app /Applications/"
   },
   "license": "MIT",

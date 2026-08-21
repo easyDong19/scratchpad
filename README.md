@@ -4,8 +4,9 @@
 
 ## 설치 (빌드된 앱)
 
-[Releases](https://github.com/easyDong19/scratchpad/releases)에서 최신 zip을 받아 압축 해제 후 `Scratchpad.app`을 `/Applications`로 이동.
-ad-hoc 서명이라 최초 실행이 차단되면:
+[Releases](https://github.com/easyDong19/scratchpad/releases)에서 최신 `.dmg`를 받아 열고 `Scratchpad.app`을 `Applications` 폴더로 드래그.
+
+ad-hoc 서명(공증 없음)이라 최초 실행 시 "확인되지 않은 개발자" 경고가 뜹니다 — **우클릭 > 열기**로 실행하거나, 안 되면:
 
 ```bash
 xattr -dr com.apple.quarantine /Applications/Scratchpad.app
