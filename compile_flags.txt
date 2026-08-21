@@ -1,0 +1,6 @@
+-xc++
+-std=c++17
+-nostdinc++
+-isystem/opt/homebrew/opt/gcc/include/c++/15
+-isystem/opt/homebrew/opt/gcc/include/c++/15/aarch64-apple-darwin25
+-isystem/opt/homebrew/opt/gcc/include/c++/15/backward
