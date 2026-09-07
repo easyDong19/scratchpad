@@ -172,6 +172,9 @@ require(['vs/editor/editor.main'], async function () {
     if (!silent) showStatus(on ? '자동완성 ON' : '자동완성 OFF — 실전 모드 · Ctrl+C로 다시 켜기');
   }
   setAutocomplete(acEnabled, true);
+  if (window.ui && window.ui.onToggleAutocomplete) {
+    window.ui.onToggleAutocomplete(() => setAutocomplete(!acEnabled));
+  }
 
   // =========================================================
   // 하단 터미널 — 컴파일+실행 (Ctrl+V 토글, Cmd+Enter 실행)
@@ -325,14 +328,14 @@ require(['vs/editor/editor.main'], async function () {
   function notify(method, params) {
     send({ method, params });
   }
-  function request(method, params) {
+  function request(method, params, timeoutMs = 5000) {
     return new Promise((resolve) => {
       const id = nextId++;
       pending.set(id, resolve);
       send({ id, method, params });
       setTimeout(() => {
         if (pending.has(id)) { pending.delete(id); resolve(null); }
-      }, 5000);
+      }, timeoutMs);
     });
   }
 
@@ -537,7 +540,10 @@ require(['vs/editor/editor.main'], async function () {
   });
 
   // ---- initialize handshake ----
-  const initResult = await request('initialize', {
+  // clangd 콜드 스타트가 느려도 연결되도록: 30초 타임아웃 + 최대 3회 재시도
+  let initResult = null;
+  for (let attempt = 0; attempt < 3 && !initResult; attempt++) {
+    initResult = await request('initialize', {
     processId: null,
     rootUri: info.rootUri,
     capabilities: {
@@ -563,7 +569,8 @@ require(['vs/editor/editor.main'], async function () {
       },
     },
     initializationOptions: {},
-  });
+  }, 30000);
+  }
 
   if (initResult) {
     notify('initialized', {});

@@ -29,17 +29,6 @@ function createWindow() {
   win.loadFile(path.join(__dirname, 'index.html'));
   win.setMenuBarVisibility(false);
 
-  // --- 디버그: 창/앱 이벤트 로그 ---
-  const logFile = path.join(WORK_DIR, 'events.log');
-  const elog = (m) => { try { fs.appendFileSync(logFile, new Date().toISOString() + ' ' + m + '\n'); } catch (_) {} };
-  elog('createWindow');
-  for (const ev of ['show', 'hide', 'minimize', 'restore', 'blur', 'focus', 'close', 'closed', 'ready-to-show', 'unresponsive']) {
-    win.on(ev, () => elog('win:' + ev + ' visible=' + (win.isDestroyed() ? '?' : win.isVisible()) + ' min=' + (win.isDestroyed() ? '?' : win.isMinimized())));
-  }
-  for (const ev of ['browser-window-blur', 'browser-window-focus', 'did-become-active', 'did-resign-active', 'activate', 'before-quit', 'will-quit']) {
-    app.on(ev, () => elog('app:' + ev));
-  }
-  win.webContents.on('render-process-gone', (_e, d) => elog('renderer gone: ' + JSON.stringify(d)));
   win.webContents.on('did-finish-load', () => elog('did-finish-load'));
   // 보스키로 불렀을 때 항상 "지금 보고 있는" 스페이스에 나타나도록
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
@@ -56,7 +45,6 @@ function createWindow() {
 }
 
 function toggleBossKey() {
-  try { fs.appendFileSync(path.join(WORK_DIR, 'events.log'), new Date().toISOString() + ' BOSSKEY visible=' + (win ? win.isVisible() : '?') + '\n'); } catch (_) {}
   if (!win) return;
   if (win.isVisible()) {
     win.hide();
@@ -237,6 +225,21 @@ app.whenReady().then(() => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
     else if (win) win.show();
   });
+});
+
+// 자동완성 토글: kill -USR1 <pid> (자동화/문서용 — Ctrl+C와 동일 동작)
+process.on('SIGUSR1', () => {
+  if (win && !win.isDestroyed()) win.webContents.send('toggle-autocomplete');
+});
+
+// 스크린샷: kill -USR2 <pid> 로 창 내용을 PNG로 저장 (문서용)
+process.on('SIGUSR2', async () => {
+  if (!win || win.isDestroyed()) return;
+  try {
+    const img = await win.webContents.capturePage();
+    const out = path.join(WORK_DIR, 'capture-' + Date.now() + '.png');
+    fs.writeFileSync(out, img.toPNG());
+  } catch (_) {}
 });
 
 app.on('will-quit', () => {

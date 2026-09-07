@@ -2,6 +2,37 @@
 
 맥용 미니멀 코드 에디터. 실행/디버깅 없음 — 순수 타이핑 연습용.
 
+## 동작 예시
+
+### 컴파일 + 실행 (`Cmd+Enter`)
+
+코드를 쓰다가 `Cmd+Enter`를 누르면 하단 터미널이 열리고 clang++(C++20)로 컴파일해 바로 실행된다.
+PTY 기반이라 `cin` 입력도 터미널에 직접 칠 수 있다.
+
+![컴파일 + 실행](docs/run.png)
+
+### C++ 자동완성 (clangd)
+
+VS Code C++ 확장과 동일한 clangd 언어 서버가 붙어 있다. `ret.pu`까지만 쳐도
+`push_back`의 오버로드 시그니처와 반환 타입까지 보여준다. `bits/stdc++.h` 기준으로 동작.
+
+코테 사이트에는 자동완성이 없으므로 `Ctrl+C`로 끄고 실전 모드로 연습할 수 있다 (기본 상태 저장됨).
+
+![자동완성](docs/autocomplete.png)
+
+### 단축키 모음집 (`Cmd+/`)
+
+단축키가 기억 안 나면 `Cmd+/` 또는 메뉴 > 도움말에서 언제든 열 수 있다.
+
+![단축키 모음집](docs/shortcuts.png)
+
+### 몰래 연습 워크플로
+
+1. `Ctrl+X` 메모 패널에 정답 코드를 붙여넣고 왼쪽에서 따라 친다
+2. `Cmd+Enter`로 돌려서 출력 확인
+3. 누가 오면 `Ctrl+Z` — 창이 즉시 사라진다 (다른 앱에 포커스가 있어도 전역으로 동작)
+4. 다시 `Ctrl+Z` — 지금 보고 있는 데스크탑/스페이스에 바로 나타난다
+
 ## 설치 (빌드된 앱)
 
 [Releases](https://github.com/easyDong19/scratchpad/releases)에서 최신 `.dmg`를 받아 열고 `Scratchpad.app`을 `Applications` 폴더로 드래그.

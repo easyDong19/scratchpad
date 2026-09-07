@@ -18,4 +18,5 @@ contextBridge.exposeInMainWorld('term', {
 
 contextBridge.exposeInMainWorld('ui', {
   onShowShortcuts: (cb) => ipcRenderer.on('show-shortcuts', () => cb()),
+  onToggleAutocomplete: (cb) => ipcRenderer.on('toggle-autocomplete', () => cb()),
 });
