@@ -78,7 +78,7 @@ window.initTemplates = function initTemplates(ctx) {
   }
 
   // =========================================================
-  // 채점 — 주석·공백·#include 순서 무시, 줄 단위 비교
+  // 채점 — 주석·공백·줄 바꿈·#include 순서 무시, 문장 단위 비교
   // =========================================================
   function stripComments(src) {
     let out = '';
@@ -102,11 +102,59 @@ window.initTemplates = function initTemplates(ctx) {
     }
     return out;
   }
-  // 반환: 비교용 key 배열 + 화면용 줄 배열 (#include는 첫 등장 위치에 정렬해서 모음)
+  // 코드를 문장 단위로 쪼갠다 — 줄 바꿈 위치와 무관하게(한 줄에 몰아 쳐도, Cmd+S로 나눠도) 같은 결과
+  // ; · 블록 { · } 뒤에서 끊는다. 괄호 ( ) 안과 초기화 중괄호(= {1, 2})는 끊지 않는다. # 줄은 그대로 한 단위
+  function toUnits(src) {
+    const units = [];
+    let buf = '';
+    const flush = () => { const u = buf.trim().replace(/\s+/g, ' '); if (u) units.push(u); buf = ''; };
+    let depth = 0, q = null;
+    const braces = []; // true = 초기화 중괄호
+    const prevChar = () => buf.trimEnd().slice(-1);
+    for (const line of stripComments(src).split('\n')) {
+      if (!q && /^\s*#/.test(line)) { flush(); units.push(line.trim().replace(/\s+/g, ' ')); continue; }
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (q) {
+          buf += c;
+          if (c === '\\' && i + 1 < line.length) buf += line[++i];
+          else if (c === q) q = null;
+          continue;
+        }
+        if (c === '"' || c === "'") { q = c; buf += c; continue; }
+        if (c === '(' || c === '[') depth++;
+        if (c === ')' || c === ']') depth = Math.max(0, depth - 1);
+        if (depth > 0) { buf += c; continue; }
+        if (c === '{') {
+          const init = /[=,{]/.test(prevChar()) || braces[braces.length - 1] === true;
+          braces.push(init);
+          buf += c;
+          if (!init) flush();
+          continue;
+        }
+        if (c === '}') {
+          const init = braces.pop();
+          if (init) { buf += c; continue; }
+          flush();
+          buf = '}';
+          // 뒤따르는 ; 는 같은 단위로 (struct {...};)
+          let j = i + 1;
+          while (j < line.length && /\s/.test(line[j])) j++;
+          if (line[j] === ';') { buf += ';'; i = j; }
+          flush();
+          continue;
+        }
+        buf += c;
+        if (c === ';') flush();
+      }
+      buf += ' ';
+    }
+    flush();
+    return units;
+  }
+  // 반환: 비교용 key 배열 + 화면용 문장 배열 (#include는 첫 등장 위치에 정렬해서 모음)
   function normalize(src) {
-    const lines = stripComments(src).split('\n')
-      .map((l) => l.trim().replace(/\s+/g, ' '))
-      .filter(Boolean);
+    const lines = toUnits(src);
     const isInc = (l) => /^#\s*include\b/.test(l);
     const key = (l) => l.replace(/\s+/g, '');
     const incs = lines.filter(isInc).sort((a, b) => key(a).localeCompare(key(b)));
@@ -199,7 +247,7 @@ window.initTemplates = function initTemplates(ctx) {
     }
     const hist = (t.attempts || []).slice(-5).reverse().map((a) => {
       const cls = a.ok ? 'ok' : 'bad';
-      const why = a.ok ? '' : a.contentOk ? ' · 시간 초과' : ` · ${Math.max(a.missing, a.extra)}줄 다름`;
+      const why = a.ok ? '' : a.contentOk ? ' · 시간 초과' : ` · ${Math.max(a.missing, a.extra)}문장 다름`;
       return `<span class="h ${cls}">${stamp(a.at)} · ${a.sec}초${why}</span>`;
     }).join('');
     const status = t.graduatedAt
@@ -272,7 +320,10 @@ window.initTemplates = function initTemplates(ctx) {
     if (templates.some((t) => t.code === code && t.id !== editingId)) return err(`${code}는 이미 있어요`);
 
     if (editingId) {
-      Object.assign(byId(editingId), { code, title, stage, goalSec, body });
+      const t = byId(editingId);
+      // 목표 시간을 직접 바꾸면 표시해 두고, 레포에서 다시 가져와도 덮어쓰지 않는다
+      if (goalSec !== t.goalSec) t.goalEdited = true;
+      Object.assign(t, { code, title, stage, goalSec, body });
     } else {
       const sameStage = templates.find((t) => t.stage === stage && t.stageName);
       const t = { id: newId(), code, title, stage, stageName: sameStage ? sameStage.stageName : '',
@@ -303,7 +354,8 @@ window.initTemplates = function initTemplates(ctx) {
   function importStatus(item) {
     const t = templates.find((x) => x.code === item.code);
     if (!t) return 'new';
-    return t.body === item.body && t.title === item.title && t.goalSec === item.goalSec ? 'same' : 'changed';
+    const goalSame = t.goalEdited || t.goalSec === item.goalSec;
+    return t.body === item.body && t.title === item.title && goalSame ? 'same' : 'changed';
   }
   async function openImport(dir) {
     view = 'import';
@@ -323,8 +375,12 @@ window.initTemplates = function initTemplates(ctx) {
     const rows = items.map((i) => {
       const st = importStatus(i);
       counts[st]++;
+      const t = templates.find((x) => x.code === i.code);
+      const goal = t && t.goalEdited
+        ? `<span class="id" title="직접 정한 목표 시간은 가져와도 유지돼요">${fmtGoal(t.goalSec)} (직접)</span>`
+        : `<span class="id">${fmtGoal(i.goalSec)}</span>`;
       return `<label class="tpl-row"><input type="checkbox" data-code="${esc(i.code)}" ${importChecked.has(i.code) ? 'checked' : ''}>
-        <span class="id">${esc(i.code)}</span><span>${esc(i.title)}</span><span class="id">${fmtGoal(i.goalSec)}</span>${label[st]}</label>`;
+        <span class="id">${esc(i.code)}</span><span>${esc(i.title)}</span>${goal}${label[st]}</label>`;
     }).join('');
     box.innerHTML = `
       <div class="tpl-dhead"><div><b>레포에서 가져오기</b>
@@ -333,14 +389,14 @@ window.initTemplates = function initTemplates(ctx) {
       <div class="tpl-path"><span>${esc(dir)}</span><button class="ghost" data-act="import-pick">폴더 바꾸기</button></div>
       ${error ? `<div class="tpl-error">${esc(error)} · 파일 위치와 형식은 <b>작성 가이드</b>를 보세요</div>` : `
         <div class="tpl-rows">${rows}</div>
-        <div class="tpl-sum">템플릿 ${items.length}개 · 새로 ${counts.new} · 바뀜 ${counts.changed} · 같음 ${counts.same} · 바뀐 것은 본문만 바꾸고 기록은 남겨요</div>`}
+        <div class="tpl-sum">템플릿 ${items.length}개 · 새로 ${counts.new} · 바뀜 ${counts.changed} · 같음 ${counts.same} · 바뀐 것은 본문만 바꾸고 기록·직접 정한 목표 시간은 남겨요</div>`}
       <div class="tpl-act"><button class="primary" data-act="import-apply" ${importChecked.size ? '' : 'disabled'}>${importChecked.size}개 가져오기</button></div>`;
   }
   async function applyImport() {
     const picked = importScan.items.filter((i) => importChecked.has(i.code));
     for (const i of picked) {
       const t = templates.find((x) => x.code === i.code);
-      if (t) Object.assign(t, { title: i.title, stage: i.stage, stageName: i.stageName, goalSec: i.goalSec, body: i.body, source: i.source });
+      if (t) Object.assign(t, { title: i.title, stage: i.stage, stageName: i.stageName, goalSec: t.goalEdited ? t.goalSec : i.goalSec, body: i.body, source: i.source });
       else templates.push({ id: newId(), ...i, attempts: [], streak: 0, graduatedAt: null });
     }
     try { localStorage.setItem(STORAGE_TPL_DIR, importScan.dir); } catch (_) {}
@@ -363,6 +419,9 @@ window.initTemplates = function initTemplates(ctx) {
     '## T6-1. 템플릿 이름 (1분 30초)',
     '',
     '```cpp',
+    '#include <vector>        // 이 코드가 쓰는 헤더만',
+    'using namespace std;',
+    '',
     '// 백지에서 복원할 코드',
     '```',
     '',
@@ -402,6 +461,8 @@ window.initTemplates = function initTemplates(ctx) {
     '- 문제 풀이 전체가 아니라, 여러 문제에 반복해서 쓰는 **최소 골격**만 (5~25줄)',
     '- 백지에서 외워 칠 수 있게 변수명은 짧고 관용적으로 (n, m, dr, dc, vis, q ...)',
     '- 핵심 이유는 코드 주석으로 달아도 된다 (채점할 때 주석은 무시됨)',
+    '- 코드 모양은 clang-format LLVM 스타일 + 들여쓰기 4칸: 한 줄에 문장 하나, 한 줄 if/for도 몸통은 다음 줄, & 는 이름 쪽 (vector<int> &v)',
+    '- 코드 블록 맨 위에 그 코드가 쓰는 헤더만 적는다 (예: #include <vector> / #include <queue> / using namespace std; / 필요하면 typedef pair<int, int> pii;). bits/stdc++.h 금지, 앞 템플릿에 있어도 생략하지 않는다. STL을 안 쓰면 헤더 없이',
     '- 목표 시간 기준: 5줄 이하 30초 · 12줄 이하 1분 · 20줄 이하 2분 · 그 이상 3분',
     '- 템플릿 4~7개. 쉬운 것 → 어려운 것 순서',
     '',
@@ -448,7 +509,7 @@ window.initTemplates = function initTemplates(ctx) {
       <pre id="guide-prompt"></pre>
 
       <h4>6. Claude Code를 쓴다면</h4>
-      <p>레포의 <code>scratchpad-template</code> 스킬이 위 규칙대로 템플릿.md를 쓰고 검사까지 해요. 직접 검사하려면 <code>node scripts/check-template.js &lt;폴더&gt;</code> — 가져오기와 같은 파서로 읽어서 형식 경고를 보여줘요.</p>
+      <p>레포의 <code>scratchpad-template</code> 스킬이 위 규칙대로 템플릿.md를 쓰고 검사까지 해요. 직접 검사하려면 <code>node scripts/check-template.js &lt;폴더&gt;</code> — 가져오기와 같은 파서로 읽어서 형식 경고를 보여줘요. <code>--fix</code>를 붙이면 코드를 앱 포맷(Cmd+S)으로 정리해요.</p>
     </div>`;
 
   function openGuide() {
@@ -650,7 +711,7 @@ window.initTemplates = function initTemplates(ctx) {
     text.className = 'big ' + (ok ? 'ok' : 'bad');
     if (ok) text.textContent = justGraduated ? '성공 · 졸업 ✓' : '성공';
     else if (r.contentOk) text.textContent = '시간 초과 · 내용은 맞음';
-    else text.textContent = `실패 · ${Math.max(r.missing, r.extra)}줄 다름`;
+    else text.textContent = `실패 · ${Math.max(r.missing, r.extra)}문장 다름`;
     meta.textContent = `${sec}초 / 목표 ${t.goalSec}초 · ` +
       (ok ? `연속 ${Math.min(t.streak, STREAK_TO_GRADUATE)}/${STREAK_TO_GRADUATE}` : '연속 기록 0으로');
     $('r-next').focus();
