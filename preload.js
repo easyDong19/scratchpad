@@ -19,6 +19,14 @@ contextBridge.exposeInMainWorld('term', {
 contextBridge.exposeInMainWorld('ui', {
   onShowShortcuts: (cb) => ipcRenderer.on('show-shortcuts', () => cb()),
   onToggleAutocomplete: (cb) => ipcRenderer.on('toggle-autocomplete', () => cb()),
+  onShowSetup: (cb) => ipcRenderer.on('show-setup', () => cb()),
+});
+
+contextBridge.exposeInMainWorld('env', {
+  check: () => ipcRenderer.invoke('env-check'),
+  installXcode: () => ipcRenderer.invoke('env-install-xcode'),
+  openTerminal: () => ipcRenderer.invoke('env-open-terminal'),
+  apply: () => ipcRenderer.invoke('env-apply'),
 });
 
 contextBridge.exposeInMainWorld('tpl', {

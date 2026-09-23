@@ -63,6 +63,7 @@ require(['vs/editor/editor.main'], async function () {
   });
   const model = editor.getModel();
   editor.focus();
+  window.focusEditor = () => editor.focus(); // 설정 화면(setup.js)이 닫힐 때
   let tplApi = null; // 템플릿 드릴 (맨 아래에서 연결)
   const persistedCode = () => (tplApi ? tplApi.persistedCode() : editor.getValue());
 
@@ -562,7 +563,8 @@ require(['vs/editor/editor.main'], async function () {
   // ---- initialize handshake ----
   // clangd 콜드 스타트가 느려도 연결되도록: 30초 타임아웃 + 최대 3회 재시도
   let initResult = null;
-  for (let attempt = 0; attempt < 3 && !initResult; attempt++) {
+  // clangd가 없으면(Xcode 명령줄 도구 미설치) 기다리지 않고 바로 안내
+  for (let attempt = 0; attempt < 3 && !initResult && info.clangd; attempt++) {
     initResult = await request('initialize', {
     processId: null,
     rootUri: info.rootUri,
@@ -604,6 +606,8 @@ require(['vs/editor/editor.main'], async function () {
     });
     ready = true;
     showStatus('clangd 연결됨 · Cmd+Enter: 실행 · Ctrl+V: 터미널 · Cmd+?: 단축키');
+  } else if (!info.clangd) {
+    showStatus('자동완성 꺼짐 — clangd 없음 · 메뉴 > 도움말 > 개발 도구 환경 확인', true);
   } else {
     showStatus('clangd 초기화 실패 — 자동완성 비활성', true);
   }

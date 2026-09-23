@@ -1,6 +1,9 @@
 # 스크래치패드 (C++ 타이핑 연습용)
 
-맥용 미니멀 코드 에디터. 실행/디버깅 없음 — 순수 타이핑 연습용.
+코딩테스트용 C++ 타이핑 연습 에디터.
+
+> **macOS 전용 (Apple Silicon)** — Windows·Linux·Intel Mac은 지원하지 않습니다.
+> 컴파일러·자동완성 도구는 앱에 들어 있지 않아 처음 한 번 설치가 필요합니다 (앱이 안내해 줌 — [처음 실행](#처음-실행--개발-도구-설치)).
 
 ## 동작 예시
 
@@ -71,6 +74,24 @@ ad-hoc 서명(공증 없음)이라 최초 실행 시 "확인되지 않은 개발
 xattr -dr com.apple.quarantine /Applications/Scratchpad.app
 ```
 
+### 처음 실행 — 개발 도구 설치
+
+에디터·메모 패널·템플릿 드릴은 설치 즉시 쓸 수 있습니다. **컴파일·실행(`Cmd+Enter`)과 자동완성**에는 아래 두 가지가 필요하고,
+빠진 게 있으면 앱을 켤 때 **"시작하기 전에"** 화면이 떠서 설치를 안내합니다 (메뉴 > 도움말 > **개발 도구 환경 확인**에서 언제든 다시 열 수 있음).
+
+| 도구 | 용도 | 설치 |
+|---|---|---|
+| Xcode 명령줄 도구 | 컴파일러 `clang++`, 자동완성 `clangd` | 안내 화면의 **설치 시작** 버튼 (= `xcode-select --install`) |
+| GCC (Homebrew) | `#include <bits/stdc++.h>` 헤더 | 안내 화면의 명령을 복사해 터미널에 붙여넣기 (비밀번호 필요) |
+
+GCC 설치 명령 (Homebrew가 없으면 [Homebrew](https://brew.sh)부터):
+
+```bash
+/opt/homebrew/bin/brew install gcc
+```
+
+설치 후 **다시 확인**을 누르면 앱을 다시 켜지 않아도 자동완성이 바로 붙습니다. 타이핑만 할 거라면 **나중에**로 넘기면 됩니다.
+
 ## 소스로 실행 / 빌드
 
 ```bash
@@ -127,8 +148,10 @@ npm run install:app  # /Applications에 설치
 
 ## 환경 의존성
 
-- `/usr/bin/clangd` (Xcode Command Line Tools에 포함)
-- Homebrew GCC 15 헤더 경로가 [compile_flags.txt](compile_flags.txt)에 지정됨 — GCC 버전을 올리면 이 파일의 `15`를 새 버전으로 수정
+- macOS · Apple Silicon (arm64 빌드만 제공)
+- Xcode Command Line Tools 또는 Xcode — `xcode-select -p`가 가리키는 툴체인의 `clang++`·`clangd`를 사용
+- Homebrew GCC (`/opt/homebrew/opt/gcc`) — 앱이 켜질 때 설치된 GCC 버전·아키텍처를 찾아 clangd용 `compile_flags.txt`를 userData 폴더에 생성 (GCC·macOS 버전이 바뀌어도 수정 불필요)
+- 레포의 [compile_flags.txt](compile_flags.txt)는 이 레포를 에디터로 열 때의 개발용 설정
 
 ## 참고
 
