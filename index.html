@@ -107,7 +107,7 @@
       pointer-events: none;
       user-select: none;
     }
-    /* 단축키 모음집 (Cmd+/ 또는 메뉴 > 도움말) */
+    /* 단축키 모음집 (Cmd+Shift+/ 또는 메뉴 > 도움말) */
     #shortcuts-overlay {
       position: fixed;
       inset: 0;
@@ -320,7 +320,7 @@
   <div id="shortcuts-overlay">
     <div id="shortcuts-card">
       <h2>단축키 모음집</h2>
-      <p class="sub">Cmd+/ 또는 메뉴 &gt; 도움말에서 언제든 열 수 있어요 · Esc로 닫기</p>
+      <p class="sub">Cmd+Shift+/ (Cmd+?) 또는 메뉴 &gt; 도움말에서 언제든 열 수 있어요 · Esc로 닫기</p>
       <table>
         <tr class="section"><td colspan="2">실행</td></tr>
         <tr><td class="k"><kbd>Cmd</kbd> <kbd>Enter</kbd></td><td>컴파일 + 실행 (터미널 자동 열림)</td></tr>
@@ -337,10 +337,11 @@
         <tr><td class="k"><kbd>Esc</kbd></td><td>복원 포기 (기록 안 남음) · 창 닫기</td></tr>
         <tr class="section"><td colspan="2">편집</td></tr>
         <tr><td class="k"><kbd>Cmd</kbd> <kbd>S</kbd></td><td>코드 포매팅 (clang-format)</td></tr>
+        <tr><td class="k"><kbd>Cmd</kbd> <kbd>/</kbd></td><td>줄 주석 토글</td></tr>
         <tr><td class="k"><kbd>Cmd</kbd> <kbd>=</kbd> / <kbd>-</kbd></td><td>글자 크기 키우기 / 줄이기</td></tr>
         <tr><td class="k"><kbd>Cmd</kbd> <kbd>0</kbd></td><td>글자 크기 초기화 (15px)</td></tr>
         <tr class="section"><td colspan="2">기타</td></tr>
-        <tr><td class="k"><kbd>Cmd</kbd> <kbd>/</kbd></td><td>이 단축키 모음집 열기/닫기</td></tr>
+        <tr><td class="k"><kbd>Cmd</kbd> <kbd>Shift</kbd> <kbd>/</kbd></td><td>이 단축키 모음집 열기/닫기</td></tr>
       </table>
     </div>
   </div>
