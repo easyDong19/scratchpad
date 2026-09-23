@@ -170,9 +170,44 @@
       letter-spacing: 0.4px;
     }
 
+    /* 첫 실행 설정 — 개발 도구 환경 확인 (메뉴 > 도움말에서도 열림) */
+    #setup-overlay {
+      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55);
+      display: none; align-items: center; justify-content: center; padding: 28px; z-index: 110;
+    }
+    #setup-overlay.open { display: flex; }
+    #setup-card {
+      width: min(560px, 100%); max-height: 100%; overflow-y: auto;
+      background: #232323; border: 1px solid #3a3a3a; border-radius: 10px;
+      padding: 20px 24px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+      color: #d4d4d4; font: 13px -apple-system, sans-serif;
+    }
+    #setup-card h2 { margin: 0 0 4px; font-size: 15px; color: #eaeaea; }
+    #setup-card .sub { margin: 0 0 14px; color: #8a8a8a; font-size: 12px; line-height: 1.5; }
+    .setup-item { display: flex; gap: 10px; padding: 11px 0; border-top: 1px solid #2f2f2f; }
+    .setup-item .mark { width: 18px; flex: none; font-weight: 700; text-align: center; }
+    .setup-item.ok .mark { color: #7fd3a0; }
+    .setup-item.missing .mark { color: #e9a39b; }
+    .setup-item .body { flex: 1; min-width: 0; }
+    .setup-item .title { color: #eaeaea; font-weight: 600; }
+    .setup-item .title small { color: #7a7a7a; font-weight: 400; margin-left: 6px; }
+    .setup-item .desc { color: #8a8a8a; font-size: 12px; margin-top: 3px; line-height: 1.5; }
+    .setup-step { margin-top: 8px; font-size: 12px; color: #bdbdbd; }
+    .setup-cmd { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
+    .setup-cmd code {
+      flex: 1; min-width: 0; white-space: pre-wrap; word-break: break-all; user-select: all;
+      background: #1a1a1a; border: 1px solid #3a3a3a; border-radius: 5px;
+      padding: 4px 8px; font: 11px Menlo, monospace; color: #e8e8e8;
+    }
+    .setup-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    #setup-foot { display: flex; align-items: center; gap: 8px; padding-top: 14px; border-top: 1px solid #2f2f2f; }
+    #setup-foot label { color: #8a8a8a; font-size: 11px; display: flex; gap: 5px; align-items: center; }
+    #setup-foot .spacer { flex: 1; }
+    #setup-msg { color: #e3b964; font-size: 11px; }
+
     [hidden] { display: none !important; }
     /* ===== 템플릿 드릴 ===== */
-    button.tb, #tpl-overlay button, #result-overlay button, #drillbar button, #memo-actions button {
+    button.tb, #tpl-overlay button, #result-overlay button, #setup-overlay button, #drillbar button, #memo-actions button {
       font: 500 11px -apple-system, sans-serif;
       border-radius: 5px;
       padding: 4px 10px;
@@ -181,13 +216,13 @@
       background: #2e2e2e;
       color: #ddd;
     }
-    #tpl-overlay button.primary, #result-overlay button.primary, #drillbar button.primary, #memo-actions button.primary {
+    #tpl-overlay button.primary, #result-overlay button.primary, #setup-overlay button.primary, #drillbar button.primary, #memo-actions button.primary {
       background: #35608c; border-color: #4a7fb5; color: #fff;
     }
     #tpl-overlay button.danger { border-color: #7a3a33; color: #e9a39b; background: transparent; }
-    #tpl-overlay button.ghost, #result-overlay button.ghost, #drillbar button.ghost, #memo-actions button.ghost { background: transparent; }
+    #tpl-overlay button.ghost, #result-overlay button.ghost, #setup-overlay button.ghost, #drillbar button.ghost, #memo-actions button.ghost { background: transparent; }
     #tpl-overlay button:disabled { opacity: .45; cursor: default; }
-    #tpl-overlay button:focus-visible, #result-overlay button:focus-visible { outline: 2px solid #4a7fb5; outline-offset: 1px; }
+    #tpl-overlay button:focus-visible, #result-overlay button:focus-visible, #setup-overlay button:focus-visible { outline: 2px solid #4a7fb5; outline-offset: 1px; }
     #memo-actions { display: flex; gap: 6px; align-items: center; }
     #memo-actions button { padding: 2px 8px; }
     .chip { display: inline-flex; font: 600 10px Menlo, monospace; padding: 1px 7px; border-radius: 999px; border: 1px solid #474747; color: #999; white-space: nowrap; }
@@ -317,6 +352,21 @@
   </div>
   <div id="statusbar"></div>
 
+  <div id="setup-overlay" role="dialog" aria-modal="true" aria-labelledby="setup-title">
+    <div id="setup-card">
+      <h2 id="setup-title">시작하기 전에</h2>
+      <p class="sub">타이핑 연습은 지금 바로 할 수 있어요. <b>컴파일·실행(Cmd+Enter)</b>과 <b>자동완성</b>을 쓰려면 아래 도구를 한 번 설치해 주세요.</p>
+      <div id="setup-list"></div>
+      <div id="setup-foot">
+        <label><input type="checkbox" id="setup-skip"> 다음부터 자동으로 띄우지 않기</label>
+        <span class="spacer"></span>
+        <span id="setup-msg"></span>
+        <button id="setup-later" class="ghost">나중에 · 타이핑만 할게요</button>
+        <button id="setup-recheck" class="primary">다시 확인</button>
+      </div>
+    </div>
+  </div>
+
   <div id="shortcuts-overlay">
     <div id="shortcuts-card">
       <h2>단축키 모음집</h2>
@@ -396,6 +446,7 @@
   <script src="node_modules/@xterm/xterm/lib/xterm.js"></script>
   <script src="node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
   <script src="node_modules/monaco-editor/min/vs/loader.js"></script>
+  <script src="setup.js"></script>
   <script src="templates.js"></script>
   <script src="renderer.js"></script>
 </body>

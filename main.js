@@ -1,5 +1,5 @@
 const { app, BrowserWindow, Menu, globalShortcut, ipcMain, nativeImage, dialog } = require('electron');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const pty = require('node-pty');
@@ -13,7 +13,46 @@ let runPty = null;
 let WORK_DIR = null;
 let SCRATCH_FILE = null;
 let TEMPLATES_FILE = null;
-const CLANGD_BIN = '/usr/bin/clangd';
+
+// ---- 개발 도구 환경 검사 (첫 실행 설정 화면용) ----
+// /usr/bin/clang++·clangd는 CLT가 없어도 존재하는 shim이라(실행 시 설치 팝업) 실제 경로로 확인한다
+const BREW_BIN = '/opt/homebrew/bin/brew';
+
+function developerDir() {
+  const r = spawnSync('/usr/bin/xcode-select', ['-p'], { encoding: 'utf8' });
+  const dir = r.status === 0 ? r.stdout.trim() : '';
+  return dir && fs.existsSync(dir) ? dir : null;
+}
+
+function findTool(dev, name) {
+  if (!dev) return null;
+  const candidates = [
+    path.join(dev, 'usr/bin', name), // Command Line Tools
+    path.join(dev, 'Toolchains/XcodeDefault.xctoolchain/usr/bin', name), // Xcode.app
+  ];
+  return candidates.find((p) => fs.existsSync(p)) || null;
+}
+
+function checkEnv() {
+  const dev = developerDir();
+  const g = gccPaths();
+  return {
+    clangxx: findTool(dev, 'clang++'),
+    clangd: findTool(dev, 'clangd'),
+    brew: fs.existsSync(BREW_BIN),
+    gcc: g ? path.basename(g.inc) : null,
+  };
+}
+
+let env = null;
+
+// clangd가 읽는 compile_flags.txt를 설치된 GCC 버전·아키텍처로 생성 (macOS·GCC 버전이 달라도 동작)
+function writeCompileFlags() {
+  const g = gccPaths();
+  const lines = ['-xc++', '-std=c++20'];
+  if (g) lines.push('-nostdinc++', '-isystem' + g.inc, '-isystem' + g.arch, '-isystem' + g.backward);
+  fs.writeFileSync(path.join(WORK_DIR, 'compile_flags.txt'), lines.join('\n') + '\n');
+}
 
 function createWindow() {
   win = new BrowserWindow({
@@ -58,11 +97,8 @@ function toggleBossKey() {
 
 // ---- clangd process + LSP stdio framing ----
 function startClangd() {
-  if (!fs.existsSync(CLANGD_BIN)) {
-    if (win) win.webContents.send('lsp-status', 'clangd not found');
-    return;
-  }
-  clangd = spawn(CLANGD_BIN, [
+  if (!env.clangd) return;
+  clangd = spawn(env.clangd, [
     '--completion-style=detailed',
     '--header-insertion=iwyu',
     '--function-arg-placeholders=true',
@@ -105,11 +141,30 @@ ipcMain.on('lsp-send', (_e, json) => {
 ipcMain.handle('lsp-info', () => ({
   rootUri: 'file://' + WORK_DIR,
   fileUri: 'file://' + SCRATCH_FILE,
+  clangd: !!clangd,
 }));
 
-// ---- 컴파일 + 실행 (하단 터미널, PTY라 cin 대화형 입력 가능) ----
-const CXX = '/usr/bin/clang++';
+ipcMain.handle('env-check', () => (env = checkEnv()));
 
+ipcMain.handle('env-install-xcode', () => {
+  // macOS 기본 설치 창을 띄운다 (이미 설치돼 있으면 조용히 실패)
+  spawn('/usr/bin/xcode-select', ['--install'], { stdio: 'ignore', detached: true }).unref();
+});
+
+ipcMain.handle('env-open-terminal', () => {
+  spawn('/usr/bin/open', ['-a', 'Terminal'], { stdio: 'ignore', detached: true }).unref();
+});
+
+// 설치 후 "다시 확인" — 새로 생긴 도구로 clangd를 다시 띄우고 렌더러를 새로 고쳐 LSP를 다시 붙인다
+ipcMain.handle('env-apply', () => {
+  env = checkEnv();
+  writeCompileFlags();
+  if (clangd) { clangd.removeAllListeners('exit'); clangd.kill(); clangd = null; }
+  startClangd();
+  if (win && !win.isDestroyed()) win.webContents.reload();
+});
+
+// ---- 컴파일 + 실행 (하단 터미널, PTY라 cin 대화형 입력 가능) ----
 // clangd와 동일한 libstdc++(Homebrew GCC) 헤더로 컴파일 — bits/stdc++.h 지원
 function gccPaths() {
   const incRoot = '/opt/homebrew/opt/gcc/include/c++';
@@ -142,14 +197,15 @@ ipcMain.on('run-start', (_e, { code, cols, rows }) => {
     if (win && !win.isDestroyed()) win.webContents.send(ch, ...args);
   };
 
+  env = checkEnv(); // 앱을 켠 뒤에 설치했을 수도 있으니 매번 다시 확인
   const g = gccPaths();
-  if (!fs.existsSync(CXX)) {
-    send('term-data', '\x1b[31mclang++ 없음 — Xcode Command Line Tools 필요: xcode-select --install\x1b[0m\r\n');
+  if (!env.clangxx) {
+    send('term-data', '\x1b[31mclang++ 없음 — Xcode Command Line Tools 필요 (메뉴 > 도움말 > 개발 도구 환경 확인)\x1b[0m\r\n');
     send('term-exit', 1);
     return;
   }
   if (!g) {
-    send('term-data', '\x1b[31mGCC libstdc++ 없음 — brew install gcc 필요 (bits/stdc++.h 헤더용)\x1b[0m\r\n');
+    send('term-data', '\x1b[31mGCC 없음 — brew install gcc 필요, bits/stdc++.h 헤더용 (메뉴 > 도움말 > 개발 도구 환경 확인)\x1b[0m\r\n');
     send('term-exit', 1);
     return;
   }
@@ -157,7 +213,7 @@ ipcMain.on('run-start', (_e, { code, cols, rows }) => {
   const bin = path.join(WORK_DIR, 'scratch.bin');
   const q = (s) => "'" + s.replace(/'/g, "'\\''") + "'";
   const script =
-    `${q(CXX)} -std=c++20 -O2 -nostdinc++` +
+    `${q(env.clangxx)} -std=c++20 -O2 -nostdinc++` +
     ` -isystem${q(g.inc)} -isystem${q(g.arch)} -isystem${q(g.backward)}` +
     ` ${q(SCRATCH_FILE)} -o ${q(bin)} -nostdlib++ ${q(g.dylib)}` +
     ` && exec ${q(bin)}`;
@@ -235,10 +291,10 @@ app.whenReady().then(() => {
 
   // clangd가 붙을 실제 파일 (내용은 렌더러의 didOpen이 진실)
   if (!fs.existsSync(SCRATCH_FILE)) fs.writeFileSync(SCRATCH_FILE, '');
-  // compile_flags.txt / .clang-format을 작업 폴더로 복사 (clangd가 읽음)
-  for (const f of ['compile_flags.txt', '.clang-format']) {
-    fs.copyFileSync(path.join(__dirname, f), path.join(WORK_DIR, f));
-  }
+  // clangd가 읽는 설정: compile_flags.txt는 설치된 GCC로 생성, .clang-format은 복사
+  env = checkEnv();
+  writeCompileFlags();
+  fs.copyFileSync(path.join(__dirname, '.clang-format'), path.join(WORK_DIR, '.clang-format'));
 
   // Dock 아이콘을 런타임에 직접 지정 (iconservices 캐시와 무관하게 보장)
   if (process.platform === 'darwin' && app.dock) {
@@ -258,6 +314,7 @@ app.whenReady().then(() => {
       label: '도움말',
       submenu: [
         { label: '단축키 모음집', accelerator: 'CmdOrCtrl+Shift+/', click: showShortcuts },
+        { label: '개발 도구 환경 확인…', click: () => win && !win.isDestroyed() && win.webContents.send('show-setup') },
       ],
     },
   ]));
