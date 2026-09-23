@@ -63,17 +63,19 @@ require(['vs/editor/editor.main'], async function () {
   });
   const model = editor.getModel();
   editor.focus();
+  let tplApi = null; // 템플릿 드릴 (맨 아래에서 연결)
+  const persistedCode = () => (tplApi ? tplApi.persistedCode() : editor.getValue());
 
   // ---- persist content ----
   let saveTimer = null;
   editor.onDidChangeModelContent(() => {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
-      localStorage.setItem(STORAGE_CODE, editor.getValue());
+      localStorage.setItem(STORAGE_CODE, persistedCode());
     }, 300);
   });
   window.addEventListener('beforeunload', () => {
-    localStorage.setItem(STORAGE_CODE, editor.getValue());
+    localStorage.setItem(STORAGE_CODE, persistedCode());
   });
 
   // ---- font size: Cmd/Ctrl +, Cmd/Ctrl -, Cmd/Ctrl 0 ----
@@ -104,9 +106,9 @@ require(['vs/editor/editor.main'], async function () {
   // =========================================================
   // 메모 패널 — 정답을 옆에 띄워놓고 따라 치기 (Ctrl+X 토글)
   // =========================================================
+  // 모델을 직접 만들어 넘긴다 — value로 자동 생성된 모델은 setModel로 바꿀 때 Monaco가 dispose해 버린다
   const memoEditor = monaco.editor.create(document.getElementById('memo-editor'), {
-    value: localStorage.getItem(STORAGE_MEMO) ?? MEMO_PLACEHOLDER,
-    language: 'cpp',
+    model: monaco.editor.createModel(localStorage.getItem(STORAGE_MEMO) ?? MEMO_PLACEHOLDER, 'cpp'),
     theme: 'vs-dark',
     fontSize: fontSize,
     fontFamily: 'Menlo, Monaco, "Courier New", monospace',
@@ -126,15 +128,17 @@ require(['vs/editor/editor.main'], async function () {
     parameterHints: { enabled: false },
     hover: { enabled: false },
   });
+  // 메모 패널은 템플릿을 띄울 때 다른 모델로 바뀌므로, 저장은 항상 원래 메모 모델에서
+  const memoModel = memoEditor.getModel();
   let memoSaveTimer = null;
-  memoEditor.onDidChangeModelContent(() => {
+  memoModel.onDidChangeContent(() => {
     clearTimeout(memoSaveTimer);
     memoSaveTimer = setTimeout(() => {
-      localStorage.setItem(STORAGE_MEMO, memoEditor.getValue());
+      localStorage.setItem(STORAGE_MEMO, memoModel.getValue());
     }, 300);
   });
   window.addEventListener('beforeunload', () => {
-    localStorage.setItem(STORAGE_MEMO, memoEditor.getValue());
+    localStorage.setItem(STORAGE_MEMO, memoModel.getValue());
   });
 
   // ---- 열기/닫기 ----
@@ -243,6 +247,7 @@ require(['vs/editor/editor.main'], async function () {
 
   // ---- 전역 키 처리 — Monaco/xterm 키바인딩보다 우선 (capture) ----
   window.addEventListener('keydown', (e) => {
+    if (tplApi && tplApi.onKeydown(e)) return;
     if (e.key === 'Escape' && shortcutsOverlay.classList.contains('open')) {
       e.preventDefault();
       setShortcutsOpen(false);
@@ -265,6 +270,8 @@ require(['vs/editor/editor.main'], async function () {
       return;
     }
     if (key !== 'x' && key !== 'c') return;
+    // 템플릿 폼·검색창 안에서는 가로채지 않는다
+    if (e.target.closest && e.target.closest('#tpl-overlay')) return;
     // 터미널 안의 Ctrl+C는 SIGINT (무한 루프 중단) — xterm이 처리하게 둔다
     if (inTerm) return;
     e.preventDefault();
@@ -312,6 +319,19 @@ require(['vs/editor/editor.main'], async function () {
     dragging = false;
     resizer.classList.remove('dragging');
     localStorage.setItem(STORAGE_MEMO_WIDTH, String(memoPanel.clientWidth));
+  });
+
+  // =========================================================
+  // 템플릿 드릴 (templates.js)
+  // =========================================================
+  tplApi = window.initTemplates({
+    monaco,
+    editor,
+    memoEditor,
+    setMemoOpen,
+    setAutocomplete,
+    isAutocomplete: () => acEnabled,
+    showStatus,
   });
 
   // =========================================================
