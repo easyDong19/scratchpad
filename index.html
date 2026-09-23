@@ -206,6 +206,12 @@
     #setup-msg { color: #e3b964; font-size: 11px; }
 
     [hidden] { display: none !important; }
+    /* 스크롤바 — 에디터·메모 패널(Monaco vs-dark) 스크롤바와 같은 모양으로 통일 */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(121, 121, 121, 0.4); border-radius: 0; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(100, 100, 100, 0.7); }
+    ::-webkit-scrollbar-thumb:active { background: rgba(191, 191, 191, 0.4); }
     /* ===== 템플릿 드릴 ===== */
     button.tb, #tpl-overlay button, #result-overlay button, #setup-overlay button, #drillbar button, #memo-actions button {
       font: 500 11px -apple-system, sans-serif;
