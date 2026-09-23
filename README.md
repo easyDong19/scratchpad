@@ -33,6 +33,40 @@ VS Code C++ 확장과 동일한 clangd 언어 서버가 붙어 있다. `ret.pu`�
 3. 누가 오면 `Ctrl+Z` — 창이 즉시 사라진다 (다른 앱에 포커스가 있어도 전역으로 동작)
 4. 다시 `Ctrl+Z` — 지금 보고 있는 데스크탑/스페이스에 바로 나타난다
 
+### 템플릿 드릴 (`Ctrl+T`)
+
+코테 템플릿을 저장해 두고 **보고 따라치기 → 가리고 백지 복원 → 채점**을 반복하는 기능.
+
+1. `Ctrl+T` 라이브러리에서 템플릿을 저장·수정·삭제하거나, **레포에서 가져오기**로 study 레포의 `stage*/템플릿.md`를 한 번에 불러온다 (`## T0-1. 제목 (30초)` 헤더 + 아래 코드 블록)
+2. **보고 따라치기** — 메모 패널 자리에 템플릿이 읽기 전용으로 뜬다 (원래 메모는 그대로 보관)
+3. `Ctrl+R` **백지 복원** — 템플릿을 가리고 빈 에디터 + 타이머. 자동완성은 꺼지고, 쓰던 코드는 따로 보관했다가 끝나면 돌려놓는다
+4. `Cmd+Shift+Enter` **제출** — 주석·공백·`#include` 순서는 무시하고 줄 단위로 비교해 diff로 보여준다
+   - 내용 일치 + 목표 시간 안 = 성공. **내용이 맞아도 시간 초과면 연속 기록이 끊긴다**
+   - 2연속 성공 = 졸업 ✓
+5. `Esc` — 복원 포기 (기록 안 남음)
+
+**템플릿.md 작성 가이드** — 라이브러리 왼쪽 아래 **작성 가이드** 버튼. 파일 위치·헤더 형식(`## T4-1. 이름 (3분)`)·흔한 실수(`###` 아래 코드 블록은 앞 템플릿에 합쳐짐 등)를 보여주고, 복붙용 뼈대와 **AI에게 붙여넣을 프롬프트**를 복사 버튼으로 제공한다. 프롬프트에 주제·STAGE 번호만 채워 Claude/ChatGPT에 주면 가져오기 형식에 맞는 템플릿.md가 나온다.
+
+**템플릿.md 검사기** — 앱과 같은 파서(`template-parser.js`)로 파일을 읽어 템플릿 목록과 형식 경고를 보여준다. 경고가 있으면 종료 코드 1.
+
+```bash
+node scripts/check-template.js ~/woodie/study/coding-test        # 폴더 (stage*/템플릿.md 전부)
+node scripts/check-template.js stage6-이분탐색/템플릿.md           # 파일 하나
+```
+
+잡는 실수: 번호 뒤 마침표 빠짐 · 목표 시간 괄호 없음 · `###` 아래 코드 블록이 앞 템플릿에 합쳐짐 · 파일 제목과 번호의 STAGE 불일치 · 코드 블록 없는 헤더 · 번호 중복 · 안 닫힌 코드 블록
+
+**템플릿 만들기 스킬 (Claude Code)** — [`.claude/skills/scratchpad-template/`](.claude/skills/scratchpad-template/SKILL.md). 주제만 주면 외워 칠 최소 골격을 가져오기 형식에 맞춰 템플릿.md로 쓰고, 검사기로 경고 0개까지 확인한다.
+
+- 이 레포에서 Claude Code를 열면 자동으로 쓸 수 있다. 예: "STAGE 6으로 이분탐색 템플릿.md 만들어줘"
+- 다른 폴더(예: study 레포)에서도 쓰려면 전역 스킬로 복사:
+
+```bash
+mkdir -p ~/.claude/skills && cp -R .claude/skills/scratchpad-template ~/.claude/skills/
+```
+
+템플릿과 시도 기록은 userData 폴더의 `templates.json`에 저장된다 (`~/Library/Application Support/scratchpad/`).
+
 ## 설치 (빌드된 앱)
 
 [Releases](https://github.com/easyDong19/scratchpad/releases)에서 최신 `.dmg`를 받아 열고 `Scratchpad.app`을 `Applications` 폴더로 드래그.
@@ -63,6 +97,10 @@ npm run install:app  # /Applications에 설치
 | `Cmd + /` | **단축키 모음집** 열기/닫기 (메뉴 > 도움말에서도 열림) |
 | `Ctrl + Z` | **보스키** — 창 숨기기/보이기 (다른 앱을 쓰는 중에도 전역으로 동작) |
 | `Ctrl + X` | **메모 패널** 열기/닫기 (정답 코드를 옆에 띄워놓고 따라 치기용) |
+| `Ctrl + T` | **템플릿 라이브러리** — 저장·수정·삭제·레포에서 가져오기 |
+| `Ctrl + R` | 보고 있는 템플릿으로 **백지 복원** 시작 |
+| `Cmd + Shift + Enter` | 복원 **제출** → 채점 |
+| `Esc` | 복원 포기 · 라이브러리/채점 창 닫기 |
 | `Ctrl + C` | **자동완성 켜기/끄기** — 코테 사이트(프로그래머스 등)엔 자동완성이 없으므로 실전 모드 연습용. 상태는 저장됨 |
 | `Cmd + =` / `Cmd + +` | 글자 크기 키우기 (최대 40px) |
 | `Cmd + -` | 글자 크기 줄이기 (최소 8px) |
