@@ -265,7 +265,7 @@ window.initTemplates = function initTemplates(ctx) {
         <div class="tpl-confirm"><span>${esc(t.code)}을(를) 삭제할까요? 시도 기록 ${(t.attempts || []).length}개도 같이 지워져요.</span>
           <span><button class="ghost" data-act="delete-cancel">취소</button><button class="danger" data-act="delete-yes">삭제</button></span></div>` : ''}
       <div class="tpl-act">
-        <button data-act="follow">보고 따라치기</button>
+        <button data-act="follow">보고 따라치기 Ctrl+F</button>
         <button class="primary" data-act="drill">백지 복원 Ctrl+R</button>
         <button data-act="edit">수정</button>
         <button class="danger" data-act="delete">삭제</button>
@@ -596,11 +596,11 @@ window.initTemplates = function initTemplates(ctx) {
     memoEditor.updateOptions({ readOnly: true });
     memoTitle.textContent = `${t.code} · ${t.title} · ${fmtGoal(t.goalSec)}`;
     memoActions.innerHTML = '<button id="memo-drill" class="primary">백지 복원 Ctrl+R</button>' +
-      '<button id="memo-back" class="ghost">메모로</button>';
+      '<button id="memo-back" class="ghost">메모로 Ctrl+M</button>';
     $('memo-drill').onclick = () => startDrill(byId(followId));
     $('memo-back').onclick = () => endFollow();
     ctx.setMemoOpen(true, true);
-    ctx.showStatus(`${t.code} 보고 따라치기 · Ctrl+X로 가리기 · Ctrl+R로 백지 복원`);
+    ctx.showStatus(`${t.code} 보고 따라치기 · Ctrl+R 백지 복원 · Ctrl+M 메모로 · Ctrl+X 가리기`);
   }
   function endFollow(silent) {
     followId = null;
@@ -763,6 +763,19 @@ window.initTemplates = function initTemplates(ctx) {
       if (drill) { ctx.showStatus('이미 복원 중이에요 · ⌘⇧↵ 제출 · Esc 포기'); return stop(); }
       const target = byId(followId) || (isLibOpen() && byId(selectedId));
       if (target) { closeLibrary(); startDrill(target); } else openLibrary();
+      return stop();
+    }
+    // Ctrl+F — 보고 따라치기 (라이브러리에서 고른 것, 아니면 지금 보는 것·마지막으로 고른 것)
+    if (key === 'f') {
+      if (drill) { ctx.showStatus('복원 중엔 템플릿을 볼 수 없어요 · Esc로 포기'); return stop(); }
+      const target = (isLibOpen() && byId(selectedId)) || byId(followId) || byId(selectedId);
+      if (target) { closeLibrary(); showFollow(target); } else openLibrary();
+      return stop();
+    }
+    // Ctrl+M — 따라치기 끝내고 원래 메모로
+    if (key === 'm') {
+      if (drill) { ctx.showStatus('복원 중이에요 · ⌘⇧↵ 제출 · Esc 포기'); return stop(); }
+      if (followId) endFollow(); else ctx.showStatus('지금은 메모를 보고 있어요');
       return stop();
     }
     if (key === 'x' && drill) {
