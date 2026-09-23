@@ -257,7 +257,7 @@ app.whenReady().then(() => {
     {
       label: '도움말',
       submenu: [
-        { label: '단축키 모음집', accelerator: 'CmdOrCtrl+/', click: showShortcuts },
+        { label: '단축키 모음집', accelerator: 'CmdOrCtrl+Shift+/', click: showShortcuts },
       ],
     },
   ]));

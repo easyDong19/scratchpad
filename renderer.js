@@ -233,7 +233,7 @@ require(['vs/editor/editor.main'], async function () {
   window.addEventListener('resize', () => { if (termOpen) fitAddon.fit(); });
 
   // =========================================================
-  // 단축키 모음집 (Cmd+/ · 메뉴 > 도움말 · Esc로 닫기)
+  // 단축키 모음집 (Cmd+Shift+/ · 메뉴 > 도움말 · Esc로 닫기)
   // =========================================================
   const shortcutsOverlay = document.getElementById('shortcuts-overlay');
   function setShortcutsOpen(open) {
@@ -603,7 +603,7 @@ require(['vs/editor/editor.main'], async function () {
       },
     });
     ready = true;
-    showStatus('clangd 연결됨 · Cmd+Enter: 실행 · Ctrl+V: 터미널 · Cmd+/: 단축키');
+    showStatus('clangd 연결됨 · Cmd+Enter: 실행 · Ctrl+V: 터미널 · Cmd+?: 단축키');
   } else {
     showStatus('clangd 초기화 실패 — 자동완성 비활성', true);
   }
