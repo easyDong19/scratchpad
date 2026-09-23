@@ -20,3 +20,10 @@ contextBridge.exposeInMainWorld('ui', {
   onShowShortcuts: (cb) => ipcRenderer.on('show-shortcuts', () => cb()),
   onToggleAutocomplete: (cb) => ipcRenderer.on('toggle-autocomplete', () => cb()),
 });
+
+contextBridge.exposeInMainWorld('tpl', {
+  load: () => ipcRenderer.invoke('tpl-load'),
+  save: (list) => ipcRenderer.invoke('tpl-save', list),
+  pickDir: (current) => ipcRenderer.invoke('tpl-pick-dir', current),
+  scan: (dir) => ipcRenderer.invoke('tpl-scan', dir),
+});

@@ -169,15 +169,143 @@
       font-weight: 600;
       letter-spacing: 0.4px;
     }
+
+    [hidden] { display: none !important; }
+    /* ===== 템플릿 드릴 ===== */
+    button.tb, #tpl-overlay button, #result-overlay button, #drillbar button, #memo-actions button {
+      font: 500 11px -apple-system, sans-serif;
+      border-radius: 5px;
+      padding: 4px 10px;
+      cursor: pointer;
+      border: 1px solid #474747;
+      background: #2e2e2e;
+      color: #ddd;
+    }
+    #tpl-overlay button.primary, #result-overlay button.primary, #drillbar button.primary, #memo-actions button.primary {
+      background: #35608c; border-color: #4a7fb5; color: #fff;
+    }
+    #tpl-overlay button.danger { border-color: #7a3a33; color: #e9a39b; background: transparent; }
+    #tpl-overlay button.ghost, #result-overlay button.ghost, #drillbar button.ghost, #memo-actions button.ghost { background: transparent; }
+    #tpl-overlay button:disabled { opacity: .45; cursor: default; }
+    #tpl-overlay button:focus-visible, #result-overlay button:focus-visible { outline: 2px solid #4a7fb5; outline-offset: 1px; }
+    #memo-actions { display: flex; gap: 6px; align-items: center; }
+    #memo-actions button { padding: 2px 8px; }
+    .chip { display: inline-flex; font: 600 10px Menlo, monospace; padding: 1px 7px; border-radius: 999px; border: 1px solid #474747; color: #999; white-space: nowrap; }
+    .chip.ok { border-color: #2f7d4f; color: #7fd3a0; background: #16291e; }
+    .chip.half { border-color: #8a6a2a; color: #e3b964; background: #2b2415; }
+    .chip.none { border-color: #3a3a3a; color: #666; }
+
+    #tpl-overlay, #result-overlay {
+      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55);
+      display: none; padding: 28px; z-index: 90;
+    }
+    #tpl-overlay.open, #result-overlay.open { display: flex; }
+    #tpl-card, #result-card {
+      flex: 1; display: flex; min-height: 0;
+      background: #232323; border: 1px solid #3a3a3a; border-radius: 10px; overflow: hidden;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+      color: #d4d4d4; font: 12px -apple-system, sans-serif;
+    }
+    #tpl-side { width: 270px; flex: 0 0 auto; display: flex; flex-direction: column; border-right: 1px solid #3a3a3a; min-height: 0; }
+    #tpl-search { margin: 10px; padding: 6px 9px; border: 1px solid #444; border-radius: 5px; background: #1b1b1b; color: #ddd; font: 12px -apple-system, sans-serif; outline: none; }
+    #tpl-search:focus { border-color: #4a7fb5; }
+    #tpl-list { flex: 1; overflow-y: auto; min-height: 0; padding-bottom: 6px; }
+    .tpl-grp { padding: 10px 12px 3px; color: #4a7fb5; font: 600 10px Menlo, monospace; letter-spacing: .4px; }
+    #tpl-list .tpl-item {
+      display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 6px;
+      padding: 5px 12px; border: 0; border-radius: 0; background: transparent; color: #cfcfcf; text-align: left;
+      font: 12px -apple-system, sans-serif;
+    }
+    #tpl-list .tpl-item b { font: 600 11px Menlo, monospace; color: #9a9a9a; margin-right: 3px; }
+    #tpl-list .tpl-item:hover { background: #2a2a2a; }
+    #tpl-list .tpl-item.sel { background: #2f3b48; }
+    .tpl-empty { padding: 14px 12px; color: #777; }
+    .tpl-sidefoot { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; border-top: 1px solid #3a3a3a; }
+    #tpl-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    #tpl-detail, #tpl-edit, #tpl-import, #tpl-guide { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .tpl-dhead { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 14px 16px 10px; }
+    .tpl-dhead b { display: block; font: 600 14px -apple-system, sans-serif; color: #eee; }
+    .tpl-dhead span { color: #888; font-size: 11px; }
+    .tpl-preview { flex: 1; min-height: 0; overflow: auto; margin: 0 16px; padding: 10px 12px; border: 1px solid #3a3a3a; border-radius: 6px; background: #1b1b1b; font: 12.5px/1.6 Menlo, Monaco, monospace; white-space: pre; }
+    .tpl-hist { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 10px 16px; color: #888; font: 11px Menlo, monospace; }
+    .tpl-hist .h { border: 1px solid #3a3a3a; border-radius: 4px; padding: 1px 6px; }
+    .tpl-hist .h.ok { color: #7fd3a0; border-color: #2f5a40; }
+    .tpl-hist .h.bad { color: #e9a39b; border-color: #5a2f2a; }
+    .tpl-act { display: flex; gap: 6px; padding: 0 16px 14px; flex-wrap: wrap; }
+    .tpl-confirm { margin: 0 16px 10px; border: 1px dashed #7a3a33; border-radius: 6px; padding: 8px 10px; color: #e9a39b; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .tpl-confirm > span:last-child { display: flex; gap: 6px; }
+    .tpl-blank { margin: auto; max-width: 360px; text-align: center; color: #999; line-height: 1.6; padding: 20px; }
+    .tpl-blank b { color: #ddd; }
+    .tpl-form { display: grid; grid-template-columns: 110px 1fr 90px 120px; gap: 10px 12px; padding: 0 16px 10px; }
+    .tpl-form label { display: flex; flex-direction: column; gap: 4px; color: #999; font-size: 11px; }
+    .tpl-form input { border: 1px solid #444; border-radius: 5px; padding: 6px 9px; background: #1b1b1b; color: #ddd; font: 12px -apple-system, sans-serif; outline: none; }
+    .tpl-form input:focus { border-color: #4a7fb5; }
+    #tpl-f-body { flex: 1; min-height: 120px; margin: 0 16px 10px; border: 1px solid #3a3a3a; border-radius: 6px; overflow: hidden; }
+    #tpl-f-error, .tpl-error { color: #e9a39b; padding: 0 16px 8px; min-height: 1em; }
+    .tpl-path { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 16px 10px; padding: 6px 9px; border: 1px solid #444; border-radius: 5px; background: #1b1b1b; color: #bbb; font: 11.5px Menlo, monospace; }
+    .tpl-rows { flex: 1; min-height: 0; overflow-y: auto; margin: 0 16px; border: 1px solid #3a3a3a; border-radius: 6px; }
+    .tpl-row { display: grid; grid-template-columns: 18px 56px 1fr 70px 80px; gap: 10px; align-items: center; padding: 5px 10px; border-bottom: 1px solid #2e2e2e; color: #ccc; cursor: pointer; }
+    .tpl-row:last-child { border-bottom: 0; }
+    .tpl-row .id { font: 11px Menlo, monospace; color: #888; }
+    .tpl-sum { color: #888; padding: 8px 16px; }
+    .guide { flex: 1; min-height: 0; overflow-y: auto; padding: 0 16px 18px; color: #c8c8c8; line-height: 1.6; }
+    .guide h4 { display: flex; align-items: center; gap: 10px; margin: 16px 0 6px; font: 600 13px -apple-system, sans-serif; color: #eee; }
+    .guide h4:first-child { margin-top: 4px; }
+    .guide ul { margin: 0; padding-left: 18px; }
+    .guide li { margin: 2px 0; }
+    .guide p { margin: 0 0 6px; color: #aaa; }
+    .guide code { font: 11.5px Menlo, monospace; color: #ce9178; }
+    .guide pre { margin: 0; padding: 10px 12px; border: 1px solid #3a3a3a; border-radius: 6px; background: #1b1b1b; font: 11.5px/1.6 Menlo, monospace; white-space: pre-wrap; color: #d4d4d4; user-select: text; }
+    .guide table { border-collapse: collapse; width: 100%; }
+    .guide td { padding: 5px 8px; border-bottom: 1px solid #2e2e2e; vertical-align: top; }
+    .guide td:first-child { white-space: nowrap; width: 1%; padding-left: 0; }
+
+    /* 백지 복원 바 */
+    #drillbar {
+      display: flex; align-items: center; gap: 12px; padding: 6px 12px;
+      background: #232323; border-bottom: 1px solid #2b2b2b; color: #9a9a9a;
+      font: 12px -apple-system, sans-serif; flex: 0 0 auto;
+    }
+    body:not(.drilling) #drillbar { display: none; }
+    #drill-name { color: #ddd; font-weight: 600; }
+    #drill-clock { font: 600 18px Menlo, monospace; color: #fff; font-variant-numeric: tabular-nums; }
+    #drill-goal { font: 11px Menlo, monospace; }
+    .drill-track { width: 160px; height: 3px; background: #333; border-radius: 2px; overflow: hidden; }
+    #drill-bar { display: block; height: 100%; width: 0; background: #4a7fb5; }
+    #drillbar.over #drill-bar { background: #d9a441; }
+    #drillbar.over #drill-clock { color: #e3b964; }
+    #drillbar .spacer, .verdict .spacer { flex: 1; }
+    #drillbar button { display: inline-flex; }
+    body.drilling #memo, body.drilling #resizer { display: none; }
+
+    /* 채점 결과 */
+    #result-card { flex-direction: column; }
+    .rhead { display: flex; padding: 6px 12px; color: #8a8a8a; font-size: 11px; border-bottom: 1px solid #3a3a3a; }
+    .rhead span { flex: 1; }
+    #diff { flex: 1; min-height: 0; }
+    .verdict { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 10px 14px; border-top: 1px solid #3a3a3a; }
+    .verdict .big { font: 700 15px -apple-system, sans-serif; }
+    .verdict .big.ok { color: #7fd3a0; }
+    .verdict .big.bad { color: #e9a39b; }
+    #verdict-meta { color: #999; font: 11px Menlo, monospace; }
+    .verdict button { margin-left: 0; }
   </style>
 </head>
 <body class="memo-closed term-closed">
   <div id="root">
+    <div id="drillbar">
+      <span id="drill-name"></span>
+      <span id="drill-clock">00:00</span><span id="drill-goal"></span>
+      <span class="drill-track"><i id="drill-bar"></i></span>
+      <span class="spacer"></span>
+      <button id="drill-abort" class="ghost">포기 Esc</button>
+      <button id="drill-submit" class="primary">제출 ⌘⇧↵</button>
+    </div>
     <div id="workspace">
       <div id="container"></div>
       <div id="resizer"></div>
       <aside id="memo">
-        <div id="memo-head"><span>메모 — 정답 보고 따라 치기</span><span class="hint">Ctrl+X</span></div>
+        <div id="memo-head"><span id="memo-title">메모 — 정답 보고 따라 치기</span><span id="memo-actions"><span class="hint">Ctrl+X</span></span></div>
         <div id="memo-editor"></div>
       </aside>
     </div>
@@ -202,6 +330,11 @@
         <tr><td class="k"><kbd>Ctrl</kbd> <kbd>Z</kbd></td><td>보스키 — 창 숨기기/보이기 (전역)</td></tr>
         <tr><td class="k"><kbd>Ctrl</kbd> <kbd>X</kbd></td><td>메모 패널 열기/닫기</td></tr>
         <tr><td class="k"><kbd>Ctrl</kbd> <kbd>C</kbd> <span style="color:#7a7a7a">(편집기)</span></td><td>자동완성 켜기/끄기 (실전 모드)</td></tr>
+        <tr class="section"><td colspan="2">템플릿 드릴</td></tr>
+        <tr><td class="k"><kbd>Ctrl</kbd> <kbd>T</kbd></td><td>템플릿 라이브러리 (저장·수정·삭제·레포에서 가져오기)</td></tr>
+        <tr><td class="k"><kbd>Ctrl</kbd> <kbd>R</kbd></td><td>보고 있는 템플릿으로 백지 복원 시작</td></tr>
+        <tr><td class="k"><kbd>Cmd</kbd> <kbd>Shift</kbd> <kbd>Enter</kbd></td><td>복원 제출 → 채점 (목표 시간 안 + 내용 일치 = 성공, 2연속 = 졸업)</td></tr>
+        <tr><td class="k"><kbd>Esc</kbd></td><td>복원 포기 (기록 안 남음) · 창 닫기</td></tr>
         <tr class="section"><td colspan="2">편집</td></tr>
         <tr><td class="k"><kbd>Cmd</kbd> <kbd>S</kbd></td><td>코드 포매팅 (clang-format)</td></tr>
         <tr><td class="k"><kbd>Cmd</kbd> <kbd>=</kbd> / <kbd>-</kbd></td><td>글자 크기 키우기 / 줄이기</td></tr>
@@ -212,10 +345,57 @@
     </div>
   </div>
 
+  <div id="tpl-overlay">
+    <div id="tpl-card">
+      <div id="tpl-side">
+        <input id="tpl-search" type="text" placeholder="템플릿 검색 (예: bfs, split)" spellcheck="false" />
+        <div id="tpl-list"></div>
+        <div class="tpl-sidefoot">
+          <button id="tpl-new">+ 새 템플릿</button>
+          <button id="tpl-import-open" class="ghost">레포에서 가져오기</button>
+          <button id="tpl-guide-open" class="ghost">작성 가이드</button>
+        </div>
+      </div>
+      <div id="tpl-main">
+        <div id="tpl-detail"></div>
+        <div id="tpl-edit" hidden>
+          <div class="tpl-dhead"><div><b id="tpl-edit-title">새 템플릿</b><span>주석은 채점할 때 무시돼요</span></div>
+            <span style="display:flex;gap:6px"><button id="tpl-f-cancel" class="ghost">취소</button><button id="tpl-f-save" class="primary">저장</button></span></div>
+          <div class="tpl-form">
+            <label>번호<input id="tpl-f-code" type="text" placeholder="T0-1" spellcheck="false" /></label>
+            <label>이름<input id="tpl-f-title" type="text" placeholder="고정 헤더 + typedef" /></label>
+            <label>STAGE<input id="tpl-f-stage" type="number" min="0" step="1" /></label>
+            <label>목표 시간<input id="tpl-f-goal" type="text" placeholder="1분 30초" /></label>
+          </div>
+          <div id="tpl-f-body"></div>
+          <div id="tpl-f-error"></div>
+        </div>
+        <div id="tpl-import" hidden></div>
+        <div id="tpl-guide" hidden></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="result-overlay">
+    <div id="result-card">
+      <div class="rhead"><span>내 코드</span><span>템플릿 · 주석·공백·#include 순서 무시</span></div>
+      <div id="diff"></div>
+      <div class="verdict">
+        <span id="verdict-text" class="big"></span><span id="verdict-meta"></span>
+        <span class="spacer"></span>
+        <button id="r-again">한 번 더</button>
+        <button id="r-list">목록</button>
+        <button id="r-close" class="ghost">닫기 Esc</button>
+        <button id="r-next" class="primary">다음 템플릿 →</button>
+      </div>
+    </div>
+  </div>
+
   <!-- xterm은 monaco AMD 로더보다 먼저 — 아니면 window.Terminal 대신 AMD 모듈로 등록됨 -->
   <script src="node_modules/@xterm/xterm/lib/xterm.js"></script>
   <script src="node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
   <script src="node_modules/monaco-editor/min/vs/loader.js"></script>
+  <script src="templates.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

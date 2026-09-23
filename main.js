@@ -1,8 +1,9 @@
-const { app, BrowserWindow, Menu, globalShortcut, ipcMain, nativeImage } = require('electron');
+const { app, BrowserWindow, Menu, globalShortcut, ipcMain, nativeImage, dialog } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const pty = require('node-pty');
+const { nfc, findTemplateFiles, parseTemplateMd } = require('./template-parser');
 
 let win = null;
 let clangd = null;
@@ -11,6 +12,7 @@ let runPty = null;
 // 작업 파일은 앱 번들이 아니라 사용자 데이터 폴더에 둔다
 let WORK_DIR = null;
 let SCRATCH_FILE = null;
+let TEMPLATES_FILE = null;
 const CLANGD_BIN = '/usr/bin/clangd';
 
 function createWindow() {
@@ -29,7 +31,6 @@ function createWindow() {
   win.loadFile(path.join(__dirname, 'index.html'));
   win.setMenuBarVisibility(false);
 
-  win.webContents.on('did-finish-load', () => elog('did-finish-load'));
   // 보스키로 불렀을 때 항상 "지금 보고 있는" 스페이스에 나타나도록
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
 
@@ -181,9 +182,56 @@ ipcMain.on('run-resize', (_e, { cols, rows }) => {
 });
 ipcMain.on('run-kill', () => killRun());
 
+// ---- 템플릿 드릴: 저장소 (userData/templates.json) + 레포 템플릿.md 가져오기 ----
+ipcMain.handle('tpl-load', () => {
+  if (!fs.existsSync(TEMPLATES_FILE)) return [];
+  try {
+    const j = JSON.parse(fs.readFileSync(TEMPLATES_FILE, 'utf8'));
+    return Array.isArray(j.templates) ? j.templates : [];
+  } catch (_) {
+    // 깨진 파일을 빈 목록으로 덮어쓰지 않도록 옆으로 치워 둔다
+    fs.renameSync(TEMPLATES_FILE, TEMPLATES_FILE + '.bad-' + Date.now());
+    return [];
+  }
+});
+
+ipcMain.handle('tpl-save', (_e, templates) => {
+  const tmp = TEMPLATES_FILE + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify({ version: 1, templates }, null, 2));
+  fs.renameSync(tmp, TEMPLATES_FILE);
+  return true;
+});
+
+ipcMain.handle('tpl-pick-dir', async (_e, current) => {
+  const r = await dialog.showOpenDialog(win, {
+    properties: ['openDirectory'],
+    defaultPath: current || app.getPath('home'),
+  });
+  return r.canceled ? null : r.filePaths[0];
+});
+
+const DEFAULT_TPL_DIR = () => path.join(app.getPath('home'), 'woodie', 'study', 'coding-test');
+
+ipcMain.handle('tpl-scan', (_e, dirArg) => {
+  const dir = dirArg || DEFAULT_TPL_DIR();
+  try {
+    const files = findTemplateFiles(dir);
+    if (!files.length) return { dir, items: [], error: '이 폴더에서 템플릿.md를 찾지 못했어요' };
+    const items = [];
+    for (const f of files) {
+      const source = nfc(path.relative(path.dirname(dir), f));
+      items.push(...parseTemplateMd(fs.readFileSync(f, 'utf8'), source).items);
+    }
+    return { dir, items, error: null };
+  } catch (err) {
+    return { dir, items: [], error: '폴더를 읽지 못했어요: ' + err.message };
+  }
+});
+
 app.whenReady().then(() => {
   WORK_DIR = app.getPath('userData');
   SCRATCH_FILE = path.join(WORK_DIR, 'scratch.cpp');
+  TEMPLATES_FILE = path.join(WORK_DIR, 'templates.json');
 
   // clangd가 붙을 실제 파일 (내용은 렌더러의 didOpen이 진실)
   if (!fs.existsSync(SCRATCH_FILE)) fs.writeFileSync(SCRATCH_FILE, '');
