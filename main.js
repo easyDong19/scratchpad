@@ -29,7 +29,6 @@ function createWindow() {
   win.loadFile(path.join(__dirname, 'index.html'));
   win.setMenuBarVisibility(false);
 
-  win.webContents.on('did-finish-load', () => elog('did-finish-load'));
   // 보스키로 불렀을 때 항상 "지금 보고 있는" 스페이스에 나타나도록
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
 
